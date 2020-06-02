@@ -24,6 +24,7 @@
     "cheerio": "^1.0.0-rc.3",
     "commander": "^5.0.0",
     "kue": "^0.11.6",
-    "rethinkdb-store": "^0.8.0"
+    "rethinkdb-store": "^0.8.0",
+    "uuid": "^7.0.2"
   }
 }

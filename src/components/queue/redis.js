@@ -6,10 +6,10 @@ const redisConfig = {
   port:   process.env['REDIS_PORT'],
 };
 
-  const queue = kue.createQueue({
-    jobEvents: false,
-    redis: { ...redisConfig },
-  });
+const queue = kue.createQueue({
+  jobEvents: false,
+  redis: { ...redisConfig },
+});
 
 function addOne(key, doc) {
   return new Promise((resolve, reject) => {
@@ -28,7 +28,7 @@ function add(key, docs) {
     : addOne(key, docs);
 }
 
-
 module.exports = {
  add,
+ consume: queue.process.bind(queue),
 }

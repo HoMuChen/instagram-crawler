@@ -20,10 +20,10 @@ program
       metaStore: store.get(options.metaStore),
       store: store.get(options.store),
       queue: queue.get(options.queue),
-      source, 
+      source: source, 
     });
 
-    medias.runWorkers(concurrency, medias.parseCode);
+    medias.runWorkers(concurrency, medias.parseCode.bind(medias));
   });
 
 program.parse()

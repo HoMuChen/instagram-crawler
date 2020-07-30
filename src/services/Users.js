@@ -13,7 +13,7 @@ function Users({ metaStore ,store, queue, source }) {
 }
 
 Users.prototype.dispatch = async function(number, options) {
-  const users = await this.getWaitingUsers(number);
+  const users = await this._getWaitingUsers(number);
 
   await this.queue.add('user', users);
 
@@ -21,14 +21,14 @@ Users.prototype.dispatch = async function(number, options) {
 }
 
 Users.prototype.dispatchPopular = async function(from, to, options) {
-  const users = await this.getPopularUsers(from, to);
+  const users = await this._getPopularUsers(from, to);
 
   await this.queue.add('popular-user', users);
 
   return users.length;
 }
 
-Users.prototype.getWaitingUsers = async function(number) {
+Users.prototype._getWaitingUsers = async function(number) {
   const users = await this.metaStore.getByIndex({
     table: 'users_v2',
     index: 'info_status',
@@ -40,7 +40,7 @@ Users.prototype.getWaitingUsers = async function(number) {
   return users;
 }
 
-Users.prototype.getPopularUsers = async function(from, to) {
+Users.prototype._getPopularUsers = async function(from, to) {
   const users = await this.metaStore.betweenByIndex({
     table: 'users_v2',
     index: 'fans_count',

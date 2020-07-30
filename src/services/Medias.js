@@ -1,5 +1,5 @@
 const cheerio = require('cheerio');
-const uuid = require('uuid/v5');
+const { v5: uuid } = require('uuid');
 
 const NAME_SPACE = process.env['UUID_NS'] || '91461c99-f89d-49d2-af96-d8e2e14e9b58';
 
@@ -11,6 +11,7 @@ function Medias({ metaStore ,store, queue, source }) {
     'PARSED': 1,
   };
   this.queueName = 'gcp-media';
+  this.metaTable = 'IG.mediaCodes';
   this.namespace = NAME_SPACE;
 
   this.metaStore = metaStore;
@@ -29,7 +30,7 @@ Medias.prototype.dispatch = async function(number, options) {
 
 Medias.prototype.getWaitingMedias = async function(number) {
   const medias = await this.metaStore.getByIndex({
-    table: 'IG.mediaCodes',
+    table: this.metaTable,
     index: 'status',
     values: this.status['WAIT'],
     size: number,
@@ -40,40 +41,49 @@ Medias.prototype.getWaitingMedias = async function(number) {
 
 Medias.prototype.runWorkers = function(concurrency, func, options={}) {
   this.queue.consume(this.queueName, concurrency, (job, done) => {
-    func(job)
+    func(job.data)
       .then(_ => done())
   })
 }
 
-Medias.prototype.parseCode = async function({ code }, options={}) {
+Medias.prototype.parseCode = async function({ id: code }) {
   const url = `${this.domain}/p/${code}`;
-  const html = this.source.dump(url, { proxy: options.proxy });
+  console.log('[Info] Start to parse media: ', url);
 
-  const { media, user, commentUsers } = this.htmlParser(html, url);
+  try {
+    const html = await this.source.dump(url+'?__a=1', {});
 
-  console.log(emdia)
+    const { media, user, commentUsers } = this.htmlParser(html, url);
 
-  //await this.metaStore.update({ id: job.code, status: this.status['PARSED'] });
-  //await this.store.upsert({ table: 'media', docs: media});
-  //await this.store.upsert({ table: 'users_v2', docs: users});
-  //await this.store.upsert({ table: 'users', docs: commentsUsers});
+    await this.updateParsed(code);
+    await this.store.upsert({ table: 'media', docs: media});
+    await this.store.upsert({ table: 'users_v2', docs: user});
+    await this.store.upsert({ table: 'users', docs: commentUsers});
 
-  return 'done';
+    return 'done';
+  } catch (e) {
+    console.log('[Error] code: ', code, e.message);
+
+    await this.updateFailed(code);
+
+    return 'done'
+  }
 }
 
-Medias.prototype.htmlParser = function(html, url) {
-  const $ = cheerio.load(body)
-  const scriptData = $('script').get()
-    .filter(tag =>
-       tag.children[0] &&
-       tag.children[0].data &&
-       tag.children[0].data.startsWith('window._sharedData =')
-    )[0].children[0].data.split('window._sharedData = ')[1].slice(0, -1)
-  const data = JSON.parse(scriptData)
-    .entry_data
-     .PostPage[0]
-    .graphql
-    .shortcode_media;
+Medias.prototype.updateParsed = async function(code) {
+  const doc = { id: code, status: this.status['PARSED'] };
+
+  await this.metaStore.upsert({ table: this.metaTable, doc })
+}
+
+Medias.prototype.updateFailed = async function(code) {
+  const doc = { id: code, status: this.status['FAILED'] };
+
+  await this.metaStore.upsert({ table: this.metaTable, doc })
+}
+
+Medias.prototype.htmlParser = function(body, url) {
+  const data = body.graphql.shortcode_media;
 
   const isHavingContent = data.edge_media_to_caption.edges.length > 0;
   const description = isHavingContent
@@ -97,7 +107,7 @@ Medias.prototype.htmlParser = function(html, url) {
   const updated_at = Math.floor(Date.now()/1000);
 
   const media = {
-    id: uuid(url),
+    id: uuid(url, this.namespace),
     url,
     updated_at,
     tm,

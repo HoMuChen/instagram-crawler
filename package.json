@@ -19,7 +19,7 @@
   "homepage": "https://github.com/HoMuChen/instagram-crawler#readme",
   "dependencies": {
     "@google-cloud/firestore": "^3.7.2",
-    "aws-sdk": "^2.647.0",
+    "aws-sdk": "^2.814.0",
     "axios": "^0.19.2",
     "cheerio": "^1.0.0-rc.3",
     "commander": "^5.0.0",
